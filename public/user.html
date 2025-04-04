@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enter Guest Name</title>
+    <style>
+        body {
+            background-color: rgba(0,0,0,0.8);
+            color: #00ff66;
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .guest-box {
+            background: black;
+            border: 2px solid #00ff66;
+            padding: 20px;
+            width: 300px;
+            text-align: center;
+        }
+        input {
+            background: black;
+            border: 1px solid #00ff66;
+            color: #00ff66;
+            padding: 8px;
+            margin: 10px 0;
+            width: 100%;
+            font-family: monospace;
+        }
+        button {
+            background: black;
+            border: 1px solid #00ff66;
+            color: #00ff66;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        .error {
+            color: #ff0066;
+            margin: 10px 0;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="guest-box">
+        <h2>ENTER GUEST NAME</h2>
+        <div id="error" class="error"></div>
+        <input type="text" id="username" placeholder="Choose a name" autocomplete="off" maxlength="20">
+        <button onclick="setUsername()">ENTER CHAT</button>
+    </div>
+
+    <script>
+        function setUsername() {
+            const username = document.getElementById('username').value.trim();
+            const errorElement = document.getElementById('error');
+            
+            if (!username || username.length < 3) {
+                errorElement.textContent = 'Name must be 3-20 characters';
+                return;
+            }
+
+            fetch('/set-guestname', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    sessionStorage.setItem('chatUser', JSON.stringify({
+                        username: data.username,
+                        isLoggedIn: false
+                    }));
+                    window.location.href = 'chat.html';
+                } else {
+                    errorElement.textContent = data.message || 'Name not available';
+                }
+            });
+        }
+
+        document.getElementById('username').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') setUsername();
+        });
+    </script>
+</body>
+</html>

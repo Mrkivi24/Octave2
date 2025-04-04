@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OCTAVE Chat - CAPTCHA Verification</title>
+    <style>
+        body {
+            background-color: black;
+            color: #00ff66;
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .captcha-container {
+            border: 2px solid #00ff66;
+            padding: 20px;
+            text-align: center;
+            max-width: 300px;
+        }
+        #captcha {
+            margin: 20px 0;
+            background-color: #111;
+            padding: 10px;
+        }
+        input {
+            background: black;
+            border: 1px solid #00ff66;
+            color: #00ff66;
+            padding: 8px;
+            margin: 10px 0;
+            width: 100%;
+            font-family: monospace;
+        }
+        button {
+            background: black;
+            border: 1px solid #00ff66;
+            color: #00ff66;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        button:hover {
+            background: #002200;
+        }
+        .error {
+            color: #ff0066;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="captcha-container">
+        <h2>CAPTCHA Verification</h2>
+        <p>Prove you're not a robot</p>
+        <div id="captcha"></div>
+        <input type="text" id="captcha-input" placeholder="Enter CAPTCHA text">
+        <button onclick="verifyCaptcha()">Verify</button>
+        <div id="error" class="error"></div>
+    </div>
+
+    <script>
+        // Load CAPTCHA on page load
+        fetch('/captcha')
+            .then(response => response.text())
+            .then(svg => {
+                document.getElementById('captcha').innerHTML = svg;
+            });
+
+        function verifyCaptcha() {
+            const input = document.getElementById('captcha-input').value;
+            const errorElement = document.getElementById('error');
+            
+            if (!input) {
+                errorElement.textContent = 'Please enter the CAPTCHA text';
+                return;
+            }
+
+            fetch('/verify-captcha', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ input })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = 'main.html';
+                } else {
+                    errorElement.textContent = 'Incorrect CAPTCHA. Try again.';
+                    // Refresh CAPTCHA
+                    fetch('/captcha')
+                        .then(response => response.text())
+                        .then(svg => {
+                            document.getElementById('captcha').innerHTML = svg;
+                            document.getElementById('captcha-input').value = '';
+                        });
+                }
+            });
+        }
+
+        // Allow pressing Enter to submit
+        document.getElementById('captcha-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                verifyCaptcha();
+            }
+        });
+    </script>
+</body>
+</html>

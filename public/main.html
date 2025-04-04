@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCTAVE Chatroom Portal</title>
+    <style>
+        body {
+            background-color: black;
+            color: #00ff66;
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .portal {
+            border: 2px solid #00ff66;
+            width: 500px;
+            padding: 30px;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 0;
+            border-bottom: 1px solid #00ff66;
+            padding-bottom: 15px;
+        }
+        .options {
+            margin: 30px 0;
+        }
+        .option {
+            border: 1px solid #00ff66;
+            padding: 15px;
+            margin: 15px 0;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .option:hover {
+            background: #002200;
+        }
+        .description {
+            margin-top: 30px;
+            line-height: 1.5;
+        }
+        .blink {
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="portal">
+        <h1>OCTAVE CHATROOM</h1>
+        
+        <div class="options">
+            <div class="option" onclick="location.href='login.html'">
+                [1] LOGIN TO EXISTING ACCOUNT
+            </div>
+            
+            <div class="option" onclick="location.href='sign.html'">
+                [2] CREATE NEW ACCOUNT
+            </div>
+            
+            <div class="option" onclick="location.href='user.html'">
+                [3] ENTER AS GUEST
+            </div>
+        </div>
+        
+        <div class="description">
+            <p>Welcome to OCTAVE chatroom.</p>
+            <p>Please login or enter as guest.</p>
+            <p>Guest sessions are temporary.</p>
+        </div>
+    </div>
+
+    <script>
+        // Handle keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case '1':
+                    location.href = 'login.html';
+                    break;
+                case '2':
+                    location.href = 'sign.html';
+                    break;
+                case '3':
+                    location.href = 'user.html';
+                    break;
+            }
+        });
+
+        // Auto-focus for keyboard users
+        window.onload = function() {
+            document.body.focus();
+        };
+    </script>
+</body>
+</html>

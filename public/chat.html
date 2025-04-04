@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCTAVE Chatroom</title>
+    <style>
+        body {
+            background-color: black;
+            color: #00ff66;
+            font-family: monospace;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            width: 900px;
+            height: 90vh;
+            border: 2px solid #00ff66;
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            grid-template-rows: 50px 1fr 70px;
+            gap: 10px;
+            padding: 10px;
+        }
+        .header {
+            grid-column: 1 / -1;
+            text-align: center;
+            font-size: 24px;
+            border-bottom: 2px solid #00ff66;
+            padding-bottom: 10px;
+        }
+        .online {
+            border-right: 1px solid #00ff66;
+            padding-right: 10px;
+            overflow-y: auto;
+        }
+        .messages {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 5px;
+        }
+        .message {
+            word-break: break-word;
+            position: relative;
+        }
+        .reply {
+            margin-left: 20px;
+            color: #00cc55;
+        }
+        .edited {
+            font-style: italic;
+            font-size: 0.8em;
+            color: #009944;
+            margin-left: 5px;
+        }
+        .sidebar {
+            border-left: 1px solid #00ff66;
+            padding-left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .input-area {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        #message-input {
+            width: 100%;
+            padding: 12px;
+            background: black;
+            border: 1px solid #00ff66;
+            color: #00ff66;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .context-menu {
+            position: absolute;
+            background: black;
+            border: 1px solid #00ff66;
+            z-index: 100;
+            padding: 5px 0;
+        }
+        .context-item {
+            padding: 5px 15px;
+            cursor: pointer;
+        }
+        .context-item:hover {
+            background: #002200;
+        }
+        #users-list div {
+            margin: 5px 0;
+        }
+        .announcement, .media {
+            border: 1px solid #00ff66;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">OCTAVE CHATROOM</div>
+        <div class="online" id="online-users">
+            <strong>Online:</strong>
+            <div id="users-list"></div>
+        </div>
+        <div class="messages" id="messages-container"></div>
+        <div class="sidebar">
+            <div class="announcement">
+                <strong>Announcement:</strong>
+                <p>Beware of scams. Don't share personal info.</p>
+            </div>
+            <div class="media">
+                <strong>Media Sharing:</strong>
+                <ul>
+                    <li>.ifichier</li>
+                    <li>.mediashare</li>
+                </ul>
+            </div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="message-input" placeholder="Message Here..." autocomplete="off">
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentUser = JSON.parse(sessionStorage.getItem('chatUser'));
+        let replyTo = null;
+        let editingMessageId = null;
+        
+        // Load chat history
+        fetch('/chat-history')
+            .then(response => response.json())
+            .then(messages => {
+                messages.forEach(msg => {
+                    displayMessage(msg);
+                });
+                scrollToBottom();
+            });
+
+        // Socket handlers
+        socket.on('message', (msg) => {
+            displayMessage(msg);
+            scrollToBottom();
+        });
+
+        socket.on('user-list', (users) => {
+            document.getElementById('users-list').innerHTML = users
+                .map(u => `<div>${u.isLoggedIn ? '{' : '['}${u.username}${u.isLoggedIn ? '}' : ']'}</div>`)
+                .join('');
+        });
+
+        socket.on('message-edited', (updatedMsg) => {
+            const msgElement = document.querySelector(`[data-msg-id="${updatedMsg.id}"]`);
+            if (msgElement) {
+                msgElement.querySelector('.content').textContent = updatedMsg.content;
+                msgElement.querySelector('.edited').style.display = 'inline';
+            }
+        });
+
+        // Message input handling
+        document.getElementById('message-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && e.target.value.trim()) {
+                if (editingMessageId) {
+                    socket.emit('edit-message', {
+                        id: editingMessageId,
+                        newContent: e.target.value
+                    });
+                    editingMessageId = null;
+                } else {
+                    socket.emit('send-message', {
+                        content: e.target.value,
+                        username: currentUser.username,
+                        isLoggedIn: currentUser.isLoggedIn,
+                        parentId: replyTo
+                    });
+                }
+                e.target.value = '';
+                e.target.placeholder = 'Message Here...';
+                replyTo = null;
+            }
+        });
+
+        // Right-click handler
+        document.addEventListener('contextmenu', (e) => {
+            if (e.target.closest('.message')) {
+                e.preventDefault();
+                const messageElement = e.target.closest('.message');
+                showContextMenu(messageElement, e.clientX, e.clientY);
+            }
+        });
+
+        function showContextMenu(messageElement, x, y) {
+            // Remove any existing context menu
+            document.querySelectorAll('.context-menu').forEach(el => el.remove());
+            
+            const menu = document.createElement('div');
+            menu.className = 'context-menu';
+            menu.style.left = `${x}px`;
+            menu.style.top = `${y}px`;
+            
+            const isOwnMessage = messageElement.dataset.sender === currentUser.username;
+            
+            menu.innerHTML = `
+                <div class="context-item" onclick="handleReply('${messageElement.dataset.msgId}', '${messageElement.dataset.sender}')">✎ Reply</div>
+                ${isOwnMessage ? `<div class="context-item" onclick="handleEdit('${messageElement.dataset.msgId}')">✎ Edit</div>` : ''}
+            `;
+            
+            document.body.appendChild(menu);
+            
+            const removeMenu = () => {
+                menu.remove();
+                document.removeEventListener('click', removeMenu);
+            };
+            
+            document.addEventListener('click', removeMenu);
+        }
+
+        window.handleReply = (msgId, username) => {
+            replyTo = msgId;
+            const input = document.getElementById('message-input');
+            input.placeholder = `Replying to ${username}...`;
+            input.focus();
+        };
+
+        window.handleEdit = (msgId) => {
+            const msgElement = document.querySelector(`[data-msg-id="${msgId}"]`);
+            const content = msgElement.querySelector('.content').textContent;
+            const input = document.getElementById('message-input');
+            input.value = content;
+            input.focus();
+            editingMessageId = msgId;
+        };
+
+        function displayMessage(msg) {
+            const messagesContainer = document.getElementById('messages-container');
+            const existingMsg = document.querySelector(`[data-msg-id="${msg.id}"]`);
+            
+            if (existingMsg) {
+                // Update existing message
+                existingMsg.querySelector('.content').textContent = msg.content;
+                if (msg.edited) {
+                    existingMsg.querySelector('.edited').style.display = 'inline';
+                }
+            } else {
+                // Create new message
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message';
+                messageDiv.dataset.msgId = msg.id;
+                messageDiv.dataset.sender = msg.username;
+                
+                let content = `
+                    <div>
+                        ${msg.isLoggedIn ? '{' : '['}${msg.username}${msg.isLoggedIn ? '}' : ']'}: 
+                        <span class="content">${msg.content}</span>
+                        <span class="edited" style="display: ${msg.edited ? 'inline' : 'none'}">*edited*</span>
+                    </div>
+                `;
+
+                if (msg.parentId) {
+                    content = `<div class="reply">↳ ${content}</div>`;
+                }
+
+                messageDiv.innerHTML = content;
+                messagesContainer.appendChild(messageDiv);
+            }
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('messages-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Notify server we're connected
+        if (currentUser) {
+            socket.emit('user-connected', currentUser);
+        } else {
+            window.location.href = 'user.html';
+        }
+    </script>
+</body>
+</html>

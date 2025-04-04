@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCTAVE - Sign Up</title>
+    <style>
+        body {
+            background-color: black;
+            color: #00ff66;
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .signup-box {
+            border: 2px solid #00ff66;
+            padding: 20px;
+            width: 300px;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 0;
+            border-bottom: 1px solid #00ff66;
+            padding-bottom: 10px;
+        }
+        input {
+            background: black;
+            border: 1px solid #00ff66;
+            color: #00ff66;
+            padding: 8px;
+            margin: 10px 0;
+            width: 100%;
+            font-family: monospace;
+        }
+        button {
+            background: black;
+            border: 1px solid #00ff66;
+            color: #00ff66;
+            padding: 8px 15px;
+            margin-top: 10px;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        button:hover {
+            background: #002200;
+        }
+        .error {
+            color: #ff0066;
+            margin: 10px 0;
+            min-height: 20px;
+        }
+        .back-link {
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+        a {
+            color: #00ff66;
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-box">
+        <h1>SIGN UP</h1>
+        <div id="error" class="error"></div>
+        <input type="text" id="username" placeholder="Username" autocomplete="off">
+        <input type="password" id="password" placeholder="Password">
+        <input type="password" id="confirm-password" placeholder="Confirm Password">
+        <button onclick="signup()">CREATE ACCOUNT</button>
+        <div class="back-link">
+            <a href="main.html">← Back to portal</a> | 
+            <a href="login.html">Existing account</a>
+        </div>
+    </div>
+
+    <script>
+        function signup() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const errorElement = document.getElementById('error');
+
+            if (!username || !password) {
+                errorElement.textContent = 'Username and password required';
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorElement.textContent = 'Passwords do not match';
+                return;
+            }
+
+            fetch('/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    sessionStorage.setItem('chatUser', JSON.stringify({
+                        username: data.username,
+                        isLoggedIn: true
+                    }));
+                    window.location.href = 'chat.html';
+                } else {
+                    errorElement.textContent = data.message || 'Signup failed';
+                }
+            })
+            .catch(error => {
+                errorElement.textContent = 'Connection error';
+            });
+        }
+
+        // Allow pressing Enter to submit
+        document.getElementById('confirm-password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                signup();
+            }
+        });
+    </script>
+</body>
+</html>
